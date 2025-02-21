@@ -1,39 +1,42 @@
+from typing import Any, Dict
+
 import psycopg2
 from psycopg2 import Error
+
 
 class PostgresDB:
     def __init__(self):
         self.connection = None
         self.cursor = None
-        
+
     def connect(self):
         try:
             self.connection = psycopg2.connect(
-                host="localhost",     
-                database="northwind",    
-                user="northwind_user",        
-                password="northwind_pass",     
-                port="5432"             
+                host="localhost",
+                database="northwind",
+                user="northwind_user",
+                password="northwind_pass",
+                port="5432",
             )
-            
+
             self.cursor = self.connection.cursor()
-            
+
         except (Exception, Error) as error:
             print(f"Unknown error: {error}")
-            
+
     def disconnect(self):
         if self.connection:
             self.cursor.close()
             self.connection.close()
             print("PostgreSQL connection closed")
-            
+
     def execute_query(self, query) -> str:
         try:
             self.cursor.execute(query)
             self.connection.commit()
 
             results = self.cursor.fetchall()
-            
+
             if not results:  # Eğer sonuç boşsa
                 return "No data found."
 
@@ -51,7 +54,7 @@ class PostgresDB:
             print(f"Error while executing query: {error}")
             return None
 
-    def get_tables_columns_dict(self) -> str:
+    def get_tables_columns_dict(self) -> Dict[str, Any]:
         query = """
             SELECT table_name, array_agg(column_name::text) as columns
             FROM information_schema.columns 
@@ -65,7 +68,7 @@ class PostgresDB:
             if not results:
                 return "No tables found in the database."
 
-            formatted_tables = "\n".join([f"{table}: {', '.join(columns)}" for table, columns in results])
+            formatted_tables = {table: columns for table, columns in results}
             print(f"Formatted Tables:\n{formatted_tables}")
 
             return formatted_tables
