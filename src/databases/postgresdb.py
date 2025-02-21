@@ -76,3 +76,14 @@ class PostgresDB:
         except (Exception, Error) as error:
             print(f"Error while getting tables and columns: {error}")
             return "Error retrieving database schema."
+
+    def get_columns_of_table(self, table_name: str) -> Dict[str, Any]:
+        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+        self.cursor.execute(query)
+        results = self.cursor.fetchall()
+
+        if not results:
+            return {}
+
+        result = {"table_name": table_name, "columns": [column[0] for column in results]}
+        return result

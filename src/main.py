@@ -63,6 +63,8 @@ python_agent = PythonAgent(
     - You are full authority to write code in python.
     - Generate chart or calcualtions in python to help the manager to make decisions.
     - You can use the FilePlugin to read and write files.
+    - Generate charts as png files.
+    - Generate csv files to help the manager to make decisions.
     """,
     tools= [file_plugin],
     markdown=True,
@@ -97,8 +99,6 @@ researcher_agent = Agent(
     num_history_responses=2,
     show_tool_calls=True,
     markdown=True,
-    monitoring=True,
-    debug_mode=True,
 )
 
 warehouse_agent = Agent(
@@ -120,9 +120,7 @@ warehouse_agent = Agent(
     - You are a database assistant that MUST use the provided tools to answer questions.
     - Always use the WarehousePlugin tool when querying database information.
     - Never try to answer database questions from memory - always query the actual database.
-    """,
-    monitoring=True,
-    debug_mode=True,
+    """
 )
 
 file_agent = Agent(
@@ -143,8 +141,6 @@ file_agent = Agent(
     num_history_responses=2,
     show_tool_calls=True,
     markdown=True,
-    monitoring=True,
-    debug_mode=True,
 )
 
 agent = Agent(
