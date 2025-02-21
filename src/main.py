@@ -6,13 +6,14 @@ from phi.agent import Agent, AgentMemory, RunResponse
 from phi.memory.classifier import MemoryClassifier
 from phi.memory.db.sqlite import SqliteMemoryDb
 from phi.memory.summarizer import MemorySummarizer
-from phi.model.google import Gemini
+from phi.model.aws.claude import Claude
 from phi.storage.agent.sqlite import SqlAgentStorage
 from phi.tools.crawl4ai_tools import Crawl4aiTools
 from phi.tools.file import FileTools
 from phi.tools.tavily import TavilyTools
 from phi.tools.yfinance import YFinanceTools
 from phi.agent.python import PythonAgent
+from phi.utils.log import logger
 
 from src.plugins import WarehousePlugin, FilePlugin
 
@@ -22,7 +23,7 @@ tavily_tools = TavilyTools(api_key=os.getenv("TAVILY_API_KEY"))
 warehouse_plugin = WarehousePlugin(format_type="markdown")
 file_plugin = FilePlugin()
 
-gemini_model = Gemini(id="gemini-2.0-flash", api_key=os.getenv("GOOGLE_API_KEY"))
+bedrock_model = Claude(id="anthropic.claude-3-5-sonnet-20240620-v1:0")
 
 ### Persist Memories ###
 leader_memory = SqliteMemoryDb(db_file="db/leader_memory.db")
@@ -36,12 +37,7 @@ leader_storage = SqlAgentStorage(
 
 def generate_memory_db(db_file: str) -> AgentMemory:
     return AgentMemory(
-        db=SqliteMemoryDb(db_file=db_file),
-        create_user_memories=True,
-        create_session_summary=True,
-        summarizer=MemorySummarizer(model=gemini_model),
-        classifier=MemoryClassifier(model=gemini_model),
-        update_user_memories_after_run=True,
+        db=SqliteMemoryDb(db_file=db_file)
     )
 
 
@@ -52,7 +48,7 @@ if not tmp.exists():
 
 python_agent = PythonAgent(
     name="PythonAgent",
-    model=gemini_model,
+    model=bedrock_model,
     base_dir=tmp,
     role="Python Developer",
     description="""
@@ -70,11 +66,12 @@ python_agent = PythonAgent(
     markdown=True,
     pip_install=True,
     show_tool_calls=True,
+    structured_output=True,
 )
 
 researcher_agent = Agent(
     name="ResearcherAgent",
-    model=gemini_model,
+    model=bedrock_model,
     role="Researcher",
     description="""
     You are a researcher that can check trending products to sale or financial statues of our rivals.
@@ -98,13 +95,15 @@ researcher_agent = Agent(
     add_history_to_messages=True,
     num_history_responses=2,
     show_tool_calls=True,
+    structured_output=True,
     markdown=True,
 )
 
 warehouse_agent = Agent(
     name="WarehouseAgent",
-    model=gemini_model,
+    model=bedrock_model,
     role="Warehouse Manager",
+    structured_output=True,
     description="""
     You are a team of experts to manage the company. You are responsible for all operations of the company.
     """,
@@ -125,7 +124,7 @@ warehouse_agent = Agent(
 
 file_agent = Agent(
     name="FileAgent",
-    model=gemini_model,
+    model=bedrock_model,
     description="""
     You are a computer file operator.
     Your job is to read and write files.
@@ -141,58 +140,32 @@ file_agent = Agent(
     num_history_responses=2,
     show_tool_calls=True,
     markdown=True,
+    structured_output=True,
 )
 
-agent = Agent(
-    name="ManagerAgent",
-    model=gemini_model,
-    markdown=True,
-    team=[warehouse_agent, file_agent, researcher_agent, python_agent],
+
+team = Agent(
+    model=bedrock_model,
+    description= """
+        You are a team of experts about web research, warehouse management, file operations and python programming.
+        Your job is to work together to solve the given problem.
+    """,
+    role="expert team",
+    instructions=["If you remember the given task, return your answer from memory",
+                  "Return the response of the team to the user",
+                  "Return the first response if you are sure about the answer"],
+    team=[researcher_agent, python_agent, file_agent, warehouse_agent],
+    add_history_to_messages=True,
+    num_history_responses=2,
+    memory = AgentMemory(
+        db=leader_memory
+    ),
     storage=leader_storage,
-    system_prompt="""
-    You are a company advisor with companion agents. Help the manager to manage the company.
-    Do not try to answer question like I can not answer that, use the teams I provided to answer the question.
-    You can use the WarehouseAgent to get information about the database. You have all authority to make decisions.
-    """,
     show_tool_calls=True,
-    update_knowledge=True,
-    add_chat_history_to_messages=True,
-    num_history_responses=3,
-    memory=generate_memory_db(db_file="db/manager_memory.db"),
-    instructions="""
-    ** Instructions **
-    You are a helpful assistant to manage my company. You can track the inventory, sales, and other metrics.
-    You can check trending products to sale or financial statues of our rivals.
-    You can also check the customers and their preferences.
-
-    ** Team **
-    - WarehouseAgent: Use for ALL database queries and information. It has access to the database.
-    - FileAgent: Use for file operations. It has access to the file system.
-    - PythonAgent: Use for generating charts and calculations. It has access to the file system.
-    - ResearcherAgent: Use for researching the web for information. It has access to the web.
-
-    ** Tools **
-    - TavilyTools: Use for web searches when needed
-
-    ** Company Rivals **
-    - Turkish Airlines
-    - SunExpress
-    - Pegasus
-
-    ** Behavior **
-    - Please be gentle and helpful. You are talking with the manager of the company.
-    - Explain your actions and thoughts in detail.
-
-    ** Temporary Files **
-    - When all operations are done, please move generated files to the temp directory.
-    - Use the temp directory to save the files.
-
-    ** End of Conversation **
-    - When the job is done, please say "The job is done" and finish the operations.
-
-    """,
     monitoring=True,
     debug_mode=True,
 )
 
-agent.cli_app(markdown=True)
+logger.info("İşlem başladı")
+team.print_response("en çok satış yaptığımız 5 müşteriyi getir ve müşterinin isminin ve satış miktarının olduğu bir pasta grafiği oluştur")
+logger.info("İşlem tamamlandı")

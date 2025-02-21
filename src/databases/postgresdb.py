@@ -37,22 +37,18 @@ class PostgresDB:
 
             results = self.cursor.fetchall()
 
-            if not results:  # Eğer sonuç boşsa
+            if not results:
                 return "No data found."
 
-            # 🔥 Sonuçları düz string olarak formatla
             formatted_results = "\n".join([str(row) for row in results])
-            print(f"Formatted Results:\n{formatted_results}")  # Debugging için
+            print(f"Formatted Results:\n{formatted_results}")
 
             return formatted_results
 
         except (Exception, Error) as error:
             print(f"Error while executing query: {error}")
+            self.connection.rollback()
             return "Database query failed."
-
-        except (Exception, Error) as error:
-            print(f"Error while executing query: {error}")
-            return None
 
     def get_tables_columns_dict(self) -> Dict[str, Any]:
         query = """
@@ -63,6 +59,7 @@ class PostgresDB:
         """
         try:
             self.cursor.execute(query)
+            self.connection.commit()
             results = self.cursor.fetchall()
 
             if not results:
@@ -75,15 +72,29 @@ class PostgresDB:
 
         except (Exception, Error) as error:
             print(f"Error while getting tables and columns: {error}")
-            return "Error retrieving database schema."
+            self.connection.rollback()
+            return f"Error retrieving database schema: {error}"
 
     def get_columns_of_table(self, table_name: str) -> Dict[str, Any]:
-        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
-        self.cursor.execute(query)
-        results = self.cursor.fetchall()
+        try:
+            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+            self.cursor.execute(query)
+            self.connection.commit()
+            results = self.cursor.fetchall()
 
-        if not results:
+            if not results:
+                return {}
+
+            result = {"table_name": table_name, "columns": [column[0] for column in results]}
+            return result
+            
+        except (Exception, Error) as error:
+            print(f"Error while getting columns for table {table_name}: {error}")
+            self.connection.rollback()
             return {}
-
-        result = {"table_name": table_name, "columns": [column[0] for column in results]}
-        return result
+    
+if __name__ == "__main__":
+    db = PostgresDB()
+    db.connect()
+    print(db.get_tables_columns_dict())
+    db.disconnect()
