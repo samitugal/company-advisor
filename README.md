@@ -49,10 +49,9 @@ For demonstration purposes, you can optionally set up the Northwind database. Th
 To run the agents and perform specific tasks, execute the `src/main.py` file. For example, to retrieve the top 5 customers by sales and generate a pie chart, use the following command:
 
 ## Screenshots
+<img width="1431" alt="Screenshot at Feb 22 15-01-27" src="https://github.com/user-attachments/assets/a070e6cf-b4c9-4ff0-84e7-c19e9259e776" />
 
-Below are some screenshots of the application in action:
-
-
+<img width="1076" alt="Screenshot at Feb 22 15-01-55" src="https://github.com/user-attachments/assets/530ed01b-fe9f-4b72-821d-73503bb72ea0" />
 
 ## Contributing
 
