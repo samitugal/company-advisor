@@ -166,6 +166,4 @@ team = Agent(
     debug_mode=True,
 )
 
-logger.info("İşlem başladı")
-team.print_response("en çok satış yaptığımız 5 müşteriyi getir ve müşterinin isminin ve satış miktarının olduğu bir pasta grafiği oluştur")
-logger.info("İşlem tamamlandı")
+team.cli_app()
